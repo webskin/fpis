@@ -24,7 +24,7 @@ object Exo1Fibo {
   }
   */
 
-  // soluce
+  // solution
   // 0 and 1 are the first two numbers in the sequence,
   // so we start the accumulators with those.
   // At every iteration, we add the two numbers to get the next one.
