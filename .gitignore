@@ -1,0 +1,13 @@
+target/
+logs/
+repository/
+dist/
+project/boot/
+.history
+.idea
+.classpath
+.project
+.settings/
+.target/
+.cache
+*.iml
