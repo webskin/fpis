@@ -4,7 +4,7 @@ package fpis
 /**
  * Created by Mickaël Gauvin on 2/10/14.
  */
-object Exo3_4_5_HOF {
+object Exo2_3_4_5_HOF {
 
   def curry[A,B,C](f: (A, B) => C): A => (B => C) = a => b => f(a, b)
 

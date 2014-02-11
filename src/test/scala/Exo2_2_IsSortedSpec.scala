@@ -2,12 +2,12 @@ package fpis
 
 import org.specs2.mutable._
 
-import Exo2IsSorted._
+import Exo2_2_IsSorted._
 
 /**
  * Created by Mickaël Gauvin on 2/10/14.
  */
-class Exo2IsSortedSpec extends Specification {
+class Exo2_2_IsSortedSpec extends Specification {
 
   "[1, 2, 3, 4, 10]" should {
     "be sorted" in {

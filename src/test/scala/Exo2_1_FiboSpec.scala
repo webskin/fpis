@@ -2,12 +2,12 @@ package fpis
 
 import org.specs2.mutable._
 
-import Exo1Fibo._
+import Exo2_1_Fibo._
 
 /**
  * Created by Mickaël Gauvin on 2/10/14.
  */
-class Exo1FiboSpec extends Specification {
+class Exo2_1_FiboSpec extends Specification {
 
   "fib(0)" should {
     "be equal to 0" in {

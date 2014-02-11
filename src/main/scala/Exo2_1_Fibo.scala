@@ -3,7 +3,7 @@ package fpis
 /**
  * Created by Mickaël Gauvin on 2/10/14.
  */
-object Exo1Fibo {
+object Exo2_1_Fibo {
 
   /*
   def fib(n: Int): Int = {

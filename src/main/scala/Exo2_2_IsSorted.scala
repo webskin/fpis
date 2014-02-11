@@ -3,7 +3,7 @@ package fpis
 /**
  * Created by Mickaël Gauvin on 2/10/14.
  */
-object Exo2IsSorted {
+object Exo2_2_IsSorted {
 
   def isSorted[A](as: Array[A], gt: (A,A) => Boolean): Boolean = {
 
