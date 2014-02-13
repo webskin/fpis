@@ -40,7 +40,15 @@ sealed abstract class Stream[+A] { // The abstract base class for streams. It wi
     case _ => empty
   }
 
-  def forAll(p: A => Boolean): Boolean = sys.error("todo")
+  /*
+  Since `&&` is non-strict in its second argument, this terminates the traversal as soon as a nonmatching element is found.
+  */
+  def forAll(f: A => Boolean): Boolean = foldRight(true)((a,b) => f(a) && b)
+
+  def takeWhile_1(f: A => Boolean): Stream[A] =
+    foldRight(empty[A])((h,t) =>
+      if (f(h)) cons(h,t)
+      else      empty)
 
   /*
   The above solution will stack overflow for large streams, since it's
@@ -56,6 +64,22 @@ sealed abstract class Stream[+A] { // The abstract base class for streams. It wi
     }
     go(this, List()).reverse
   }
+
+  def map[B](f: A => B): Stream[B] =
+    foldRight(empty[B])((h,t) => cons(f(h), t))
+
+  def filter[B](f: A => Boolean): Stream[A] =
+    foldRight(empty[A])((h,t) =>
+      if (f(h)) cons(h, t)
+      else t)
+
+  def append[B>:A](s: Stream[B]): Stream[B] =
+    foldRight(s)((h,t) => cons(h,t))
+
+  def flatMap[B](f: A => Stream[B]): Stream[B] =
+    foldRight(empty[B])((h,t) => f(h) append t)
+
+
 }
 
 object Empty extends Stream[Nothing] {
@@ -79,9 +103,98 @@ object Stream {
       if (as.isEmpty) Empty else cons(as.head, apply(as.tail: _*))
 
   val ones: Stream[Int] = cons(1, ones)
-  def from(n: Int): Stream[Int] = sys.error("todo")
 
-  def unfold[A, S](z: S)(f: S => Option[(A, S)]): Stream[A] = sys.error("todo")
+  def constantMine[A](a: A): Stream[A] = {
+    cons(a, constantMine(a))
+  }
 
-  def startsWith[A](s: Stream[A], s2: Stream[A]): Boolean = sys.error("todo")
+  // This is more efficient than `cons(a, constant(a))` since it's just
+  // one object referencing itself.
+  def constant[A](a: A): Stream[A] = new Cons[A] {
+    val head = a
+    lazy val tail = this
+  }
+
+  def from(n: Int): Stream[Int] = new Cons[Int] {
+    val head = n
+    lazy val tail = from(n + 1)
+  }
+
+  val fibs = {
+    def go(f0: Int, f1: Int): Stream[Int] =
+      cons(f0, go(f1, f0+f1))
+    go(0, 1)
+  }
+
+  def unfold[A, S](z: S)(f: S => Option[(A, S)]): Stream[A] =
+    f(z) match {
+      case Some((h,s)) => cons(h, unfold(s)(f))
+      case None => empty
+    }
+
+  /*
+  Scala provides shorter syntax when the first action of a function literal is to match on an expression.  The function passed to `unfold` in `fibsViaUnfold` is equivalent to `p => p match { case (f0,f1) => ... }`, but we avoid having to choose a name for `p`, only to pattern match on it.
+  */
+  val fibsViaUnfold = cons(0,
+    unfold((0,1)) { case (f0,f1) => Some((f1,(f1,f0+f1))) })
+
+  def fromViaUnfold(n: Int) =
+    unfold(n)(n => Some((n,n+1)))
+
+  def constantViaUnfold[A](a: A) =
+    unfold(a)(_ => Some((a,a)))
+
+  // could also of course be implemented as constant(1)
+  val onesViaUnfold = unfold(1)(_ => Some((1,1)))
+
+  /*
+  s.startsWith(s2) when corresponding elements of s and s2 are all equal, until the point that s2 is exhausted. If s is exhausted first, or we find an element that doesn't match, we terminate early. Using non-strictness, we can compose these three separate logical steps - the zipping, the termination when the second stream is exhausted, and the termination if a nonmatching element is found or the first stream is exhausted.
+  */
+  def startsWith[A](s1: Stream[A], s: Stream[A]): Boolean =
+    s1.zipAll(s).takeWhile(!_._2.isEmpty) forAll {
+      case (Some(h),Some(h2)) if h == h2 => true
+      case _ => false
+    }
+
+  def hasSubsequence[A](s1: Stream[A], s2: Stream[A]): Boolean =
+    s1.tails exists (startsWith(_,s2))
+}
+
+// In this alternate version of `Stream`, the abstract method is `foldRight`
+// instead of `uncons`. We give it two concrete implementations, one
+// in `Empty` and one in `Cons`.
+// The fact that this is possible means that `foldRight` is in some sense
+// a primitive `Stream` operation in terms of which all other operations
+// can be written.
+// It can be a more efficient representation because we don't need to
+// construct those intermediate `Option`s during the fold.
+// Practically speaking, both `uncons` and `foldRight` should be abstract in
+// `Stream`, not with one implemented in terms of the other.
+sealed abstract class Stream2[+A] {
+  def foldRight[B](z: => B)(f: (A, => B) => B): B
+
+  def uncons: Option[Cons2[A]] =
+    foldRight(None:Option[Cons2[A]])((h, r) =>
+      Some(Stream2.cons2(h, r.getOrElse(Empty2))))
+}
+
+case object Empty2 extends Stream2[Nothing] {
+  // Folding the empty stream results in the base case.
+  def foldRight[B](z: => B)(f: (Nothing, => B) => B) = z
+
+}
+sealed abstract class Cons2[+A] extends Stream2[A] {
+  def head: A
+  def tail: Stream2[A]
+
+  // Folding a nonempty stream applies f to the head and the fold of the tail.
+  def foldRight[B](z: => B)(f: (A, => B) => B) =
+    f(head, tail.foldRight(z)(f))
+}
+
+object Stream2 {
+  def cons2[A](hd: => A, tl: => Stream2[A]): Cons2[A] = new Cons2[A] {
+    lazy val head = hd
+    lazy val tail = tl
+  }
 }
