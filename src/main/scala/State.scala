@@ -253,6 +253,21 @@ case class State[S, +A](run: S => (A, S)) {
 }
 
 // http://www.haskell.org/haskellwiki/All_About_Monads#The_State_monad
+/*
+A pure functional language cannot update values in place because it violates referential transparency.
+A common idiom to simulate such stateful computations is to "thread" a state parameter through a sequence of functions:
+data MyType = MT Int Bool Char Int deriving Show
+
+makeRandomValue :: StdGen -> (MyType, StdGen)
+makeRandomValue g = let (n,g1) = randomR (1,100) g
+                        (b,g2) = random g1
+                        (c,g3) = randomR ('a','z') g2
+                        (m,g4) = randomR (-n,n) g3
+                    in (MT n b c m, g4)
+This approach works, but such code can be error-prone, messy and difficult to maintain. The State monad hides the
+threading of the state parameter inside the binding operation, simultaneously making the code easier to write,
+easier to read and easier to modify.
+ */
 object State {
   type Rand[A] = State[RNG, A]
 
