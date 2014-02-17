@@ -252,6 +252,7 @@ case class State[S, +A](run: S => (A, S)) {
   })
 }
 
+// http://www.haskell.org/haskellwiki/All_About_Monads#The_State_monad
 object State {
   type Rand[A] = State[RNG, A]
 
