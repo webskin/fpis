@@ -267,6 +267,8 @@ makeRandomValue g = let (n,g1) = randomR (1,100) g
 This approach works, but such code can be error-prone, messy and difficult to maintain. The State monad hides the
 threading of the state parameter inside the binding operation, simultaneously making the code easier to write,
 easier to read and easier to modify.
+
+cf. http://www.infoq.com/fr/presentations/state-monad
  */
 object State {
   type Rand[A] = State[RNG, A]
