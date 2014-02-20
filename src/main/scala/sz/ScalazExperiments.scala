@@ -189,15 +189,30 @@ object ScalazExperiments {
 
     implicit def ToFunctorIdV[A](v: A) = new FunctorIdV[A] { def self = v }
 
+
+
+
     */
 
     import syntax.functor._
-    import std.tuple._
 
     // la classe Tuple de base n'a pas de methode map
 
     {
-      val t = (1, 2, 3) map {_ + 1}
+
+      /*
+       scalaz/std/Tuple.scala :
+      ------------------------------
+      private[scalaz] trait Tuple3Functor[A1, A2] extends Traverse[({type f[x] = (A1, A2, x)})#f] {
+        override def map[A, B](fa: (A1, A2, A))(f: A => B) =
+          (fa._1, fa._2, f(fa._3))
+        def traverseImpl[G[_], A, B](fa: (A1, A2, A))(f: A => G[B])(implicit G: Applicative[G]) =
+          G.map(f(fa._3))((fa._1, fa._2, _))
+      }
+      */
+      import std.tuple._
+
+      val t = (1, 2, 3) map { 1 + }
       println(t)
     }
 
