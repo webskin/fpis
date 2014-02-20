@@ -23,6 +23,15 @@ object ScalazExperiments {
         …
       }
 
+      scalaz/syntax/Ops.scala :
+      ------------------------------
+      package scalaz.syntax
+
+      trait Ops[A] {
+        def self: A
+      }
+
+
       scalaz/syntax/ShowSyntax.scala :
       ------------------------------
       package scalaz
@@ -40,8 +49,13 @@ object ScalazExperiments {
       }
 
       trait ToShowOps  {
+
+        // ------------------------------------------------------------
+        // ce qui est importé
+        // ------------------------------------------------------------
         implicit def ToShowOps[F](v: F)(implicit F0: Show[F]) =
           new ShowOps[F] { def self = v; implicit def F: Show[F] = F0 }
+        // ------------------------------------------------------------
 
         ////
 
@@ -108,15 +122,55 @@ object ScalazExperiments {
         ////
       }
 
-       */
+      */
+
+      /*
+
+      // ------------------------------------------------------------
+      // ce qui est importé
+      // ------------------------------------------------------------
+      implicit def ToShowOps[F](v: F)(implicit F0: Show[F]) =
+          new ShowOps[F] { def self = v; implicit def F: Show[F] = F0 }
+
+      */
       import syntax.show._
 
-      implicit val IntShow = new Show[Int] {
-        override def shows(a: Int) = a.toString
+      {
+        /*
+        IntShow correspond à F0 dans ToShowOps ce qui revient à avoir dans le scope :
+        implicit def ToShowOps[Int](v: Int) =
+            new ShowOps[Int] { def self = v; implicit def F: Show[Int] = IntShow }
+        */
+        implicit val IntShow = new Show[Int] {
+          override def shows(a: Int) = a.toString + " toto "
+        }
+
+        /*
+        Du coup on a dans le scope une fonction capable de convertir un Int en ShowOps[Int]:
+        implicit def ToShowOps[Int](v: Int): ShowOps[Int]
+        proxifiant Show[Int] et proposant les methods : show, shows, print, println
+
+        // Wraps a value `self` and provides methods related to `Show`
+        trait ShowOps[F] extends Ops[F] {
+          implicit def F: Show[F]
+          ////
+          final def show: Cord = F.show(self)
+          final def shows: String = F.shows(self)
+          final def print: Unit = Console.print(shows)
+          final def println: Unit = Console.println(shows)
+          ////
+        }
+        */
+        println(3.shows)
       }
 
-      println(3.shows)
-      println(3.show)
+      {
+        implicit val IntShow = new Show[Int] {
+          override def shows(a: Int) = a.toString + " tata "
+        }
+
+        println(4.shows)
+      }
 
     }
 
