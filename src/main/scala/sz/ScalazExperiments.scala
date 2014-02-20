@@ -212,7 +212,7 @@ object ScalazExperiments {
       */
       import std.tuple._
 
-      val t = (1, 2, 3) map { 1 + }
+      val t = (1, 2, 3) map { 1 + _ }
       println(t)
     }
 
