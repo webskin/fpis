@@ -159,7 +159,7 @@ object ScalazExperiments {
         ////
       }
       */
-      println(3.shows)
+      println(3.shows) // affiche 3 toto
     }
 
     {
@@ -167,7 +167,7 @@ object ScalazExperiments {
         override def shows(a: Int) = a.toString + " tata "
       }
 
-      println(4.shows)
+      println(4.shows) // affiche 4 tata
 
     }
 
@@ -201,7 +201,7 @@ object ScalazExperiments {
     {
 
       /*
-       scalaz/std/Tuple.scala :
+      scalaz/std/Tuple.scala :
       ------------------------------
       private[scalaz] trait Tuple3Functor[A1, A2] extends Traverse[({type f[x] = (A1, A2, x)})#f] {
         override def map[A, B](fa: (A1, A2, A))(f: A => B) =
@@ -213,7 +213,69 @@ object ScalazExperiments {
       import std.tuple._
 
       val t = (1, 2, 3) map { 1 + _ }
-      println(t)
+      println(t) // affiche (1, 2, 4)    (fa._1, fa._2, f(fa._3))
+    }
+
+    {
+      // Composition
+
+      // import functor instances
+      import scalaz.std.option._
+
+      /*
+      scalaz/std/List.scala :
+      ------------------------------
+      …
+      // Traverse is a functor
+      trait ListInstances extends ListInstances0 {
+        // Le functor implicit
+        implicit val listInstance = new Traverse[List] with MonadPlus[List] with Each[List] with Index[List] with Length[List] with Zip[List] with Unzip[List] with IsEmpty[List] {
+      …
+      object list extends ListInstances with ListFunctions {
+        object listSyntax extends scalaz.syntax.std.ToListOps
+      }
+      …
+      */
+      import scalaz.std.list._
+
+
+      /*
+
+      scalaz/Functor.scala :
+      ------------------------------
+
+      // The composition of Functors `F` and `G`, `[x]F[G[x]]`, is a Functor
+      def compose[G[_]](implicit G0: Functor[G]): Functor[({type λ[α] = F[G[α]]})#λ] = new CompositionFunctor[F, G] {
+        implicit def F = self
+
+        implicit def G = G0
+      }
+      …
+      object Functor {
+        @inline def apply[F[_]](implicit F: Functor[F]): Functor[F] = F
+      }
+
+      scalaz/Composition.scala :
+      ------------------------------
+
+      private[scalaz] trait CompositionFunctor[F[_], G[_]] extends Functor[({type λ[α] = F[G[α]]})#λ] {
+        implicit def F: Functor[F]
+
+        implicit def G: Functor[G]
+
+        override def map[A, B](fga: F[G[A]])(f: A => B): F[G[B]] = F(fga)(ga => G(ga)(f))
+      }
+
+      Functor[List] compose Functor[Option]
+      */
+      val f = Functor[List] compose Functor[Option]
+
+      println(f.map(List(Some(1), None, Some(3)))(_ + 1)) // affiche List(Some(2), None, Some(4))
+      println(intersperse(List(Some(1), Some(2), Some(3)), None)) // List(Some(1), None, Some(2), None, Some(3))
+      println(toNel(List(Some(1), None, Some(3)))) // affiche Some(NonEmptyList(Some(1), None, Some(3)))
+
+
+
     }
 
   }
