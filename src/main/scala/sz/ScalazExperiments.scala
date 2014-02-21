@@ -174,6 +174,23 @@ object ScalazExperiments {
 
   }
 
+  /*
+  From Haskell :
+  The Functor class (haddock) is the most basic and ubiquitous type class in the Haskell libraries.
+  A simple intuition is that a Functor represents a “container” of some sort, along with the ability to apply a
+  function uniformly to every element in the container. For example, a list is a container of elements,
+  and we can apply a function to every element of a list, using map. As another example, a binary tree is also a
+  container of elements, and it’s not hard to come up with a way to recursively apply a function to every element in a tree.
+
+  Another intuition is that a Functor represents some sort of “computational context”.
+  This intuition is generally more useful, but is more difficult to explain, precisely because it is so general.
+  Some examples later should help to clarify the Functor-as-context point of view.
+
+  In the end, however, a Functor is simply what it is defined to be;
+  doubtless there are many examples of Functor instances that don’t exactly
+  fit either of the above intuitions. The wise student will focus their attention on definitions and examples,
+  without leaning too heavily on any particular metaphor. Intuition will come, in time, on its own.
+  */
   def testFunctor() {
 
     /*
@@ -188,10 +205,6 @@ object ScalazExperiments {
     implicit def ToLiftV[F[_], A, B](v: A => B) = new LiftV[F, A, B] { def self = v }
 
     implicit def ToFunctorIdV[A](v: A) = new FunctorIdV[A] { def self = v }
-
-
-
-
     */
 
     import syntax.functor._
@@ -218,6 +231,7 @@ object ScalazExperiments {
 
     {
       // Composition
+      // ----------------
 
       // import functor instances
       import scalaz.std.option._
@@ -278,8 +292,7 @@ object ScalazExperiments {
       scala> :t res1
       scalaz.Functor[[α]List[Option[α]]]
       */
-      val f = Functor[List] compose Functor[Option]
-
+      val compose1 = Functor[List] compose Functor[Option]
 
       /*
       map[Int, Double](fga: List[Option[Int]])(f: Int => Double): List[Option[Double]] ==
@@ -301,7 +314,7 @@ object ScalazExperiments {
       */
       val fga = List(Some(1), None, Some(3))
       val transfo: Int => Double = _ / 2.0
-      println(f.map(fga)(transfo)) // affiche List(Some(0.5), None, Some(1.5))
+      println(compose1.map(fga)(transfo)) // affiche List(Some(0.5), None, Some(1.5))
       println(listInstance.map(fga)(ga => optionInstance.apply(ga)(transfo))) // affiche List(Some(0.5), None, Some(1.5))
 
       {
@@ -313,6 +326,34 @@ object ScalazExperiments {
       println(intersperse(List(Some(1), Some(2), Some(3)), None)) // List(Some(1), None, Some(2), None, Some(3))
       println(toNel(List(Some(1), None, Some(3)))) // affiche Some(NonEmptyList(Some(1), None, Some(3)))
 
+
+
+      // Product
+      // ---------------------
+
+      /*
+      private[scalaz] trait ProductFunctor[F[_], G[_]] extends Functor[({type λ[α] = (F[α], G[α])})#λ] {
+        implicit def F: Functor[F]
+
+        implicit def G: Functor[G]
+
+        override def map[A, B](fa: (F[A], G[A]))(f: A => B): (F[B], G[B]) = (F.map(fa._1)(f), G.map(fa._2)(f))
+      }
+      */
+      val product1 = Functor[List] product Functor[Option] // scalaz.Functor[[α](List[α], Option[α])]
+
+      println(product1.map((List(1, 2, 3), Some(4)))(_.toString + " titi ")) // affiche (List(1 titi , 2 titi , 3 titi ),Some(4 titi ))
+
+      val product2 = compose1 product Functor[Option] // scalaz.Functor[[α](List[Option[α]], Option[α])]
+
+      println(product2.map((List(Some(1), Some(2), Some(3), None), Some(4)))(_.toString + " titi ")) // affiche (List(Some(1 titi ), Some(2 titi ), Some(3 titi ), None),Some(4 titi ))
+
+      // Lift
+      // ---------------------
+
+      val lifted = product2.lift(transfo) //  ((List[Option[Int]], Option[Int])) => (List[Option[Double]], Option[Double])
+
+      println(lifted((List(Some(1), Some(2), Some(3), None), Some(4)))) // (List(Some(0.5), Some(1.0), Some(1.5), None),Some(2.0))
 
 
     }
