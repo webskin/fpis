@@ -266,11 +266,50 @@ object ScalazExperiments {
         override def map[A, B](fga: F[G[A]])(f: A => B): F[G[B]] = F(fga)(ga => G(ga)(f))
       }
 
-      Functor[List] compose Functor[Option]
+      Functor[List] compose Functor[Option] ==
+      Functor[List].apply[List[_]](listInstance) compose Functor[Option].apply[Option[_]](optionInstance)  ==
+      listInstance compose optionInstance
+
+
+      In repl :
+      scala> Functor[List] compose Functor[Option]
+      res1: scalaz.Functor[[α]List[Option[α]]] = scalaz.Functor$$anon$1@598e89f5
+
+      scala> :t res1
+      scalaz.Functor[[α]List[Option[α]]]
       */
       val f = Functor[List] compose Functor[Option]
 
-      println(f.map(List(Some(1), None, Some(3)))(_ + 1)) // affiche List(Some(2), None, Some(4))
+
+      /*
+      map[Int, Double](fga: List[Option[Int]])(f: Int => Double): List[Option[Double]] ==
+      listInstance.apply(fga)(ga => optionInstance.apply(ga)(f)) ==
+      listInstance.map(fga)(ga => optionInstance.map(ga)(f)) ==
+      listInstance.traversal[Id](Id.id).run(fga)(ga => ga map f) ==
+      listInstance.traverseImpl[Id,Int,Double](fga)(ga => ga map f)(Id.id) ==
+
+      DList.fromList(fga).foldr(Id.id.point(Option[Double]())) {
+         (ga, fbs) => Id.id.apply2(ga => ga map f, fbs)(_ :: _)
+      }
+
+      ==
+
+      DList.fromList(fga: List[Option[Int]]).foldr(List[Option[Double]]()) {
+         (ga, fbs) => ap(fbs)(map(ga => ga map f)((_ :: _).curried))
+      }
+
+      */
+      val fga = List(Some(1), None, Some(3))
+      val transfo: Int => Double = _ / 2.0
+      println(f.map(fga)(transfo)) // affiche List(Some(0.5), None, Some(1.5))
+      println(listInstance.map(fga)(ga => optionInstance.apply(ga)(transfo))) // affiche List(Some(0.5), None, Some(1.5))
+
+      {
+        import scalaz.Id.Id
+        println(listInstance.traverseImpl[Id,Option[Int],Option[Double]](fga)(ga => ga map transfo)(Id.id)) // affiche List(Some(0.5), None, Some(1.5))
+      }
+
+
       println(intersperse(List(Some(1), Some(2), Some(3)), None)) // List(Some(1), None, Some(2), None, Some(3))
       println(toNel(List(Some(1), None, Some(3)))) // affiche Some(NonEmptyList(Some(1), None, Some(3)))
 
