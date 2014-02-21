@@ -190,6 +190,21 @@ object ScalazExperiments {
   doubtless there are many examples of Functor instances that don’t exactly
   fit either of the above intuitions. The wise student will focus their attention on definitions and examples,
   without leaning too heavily on any particular metaphor. Intuition will come, in time, on its own.
+
+  Lois :
+  trait FunctorLaw {
+    /** The identity function, lifted, is a no-op. */
+    def identity[A](fa: F[A])(implicit FA: Equal[F[A]]): Boolean = FA.equal(map(fa)(x => x), fa)
+
+    /**
+     * A series of maps may be freely rewritten as a single map on a
+     * composed function.
+     */
+    def composite[A, B, C](fa: F[A], f1: A => B, f2: B => C)(implicit FC: Equal[F[C]]): Boolean = FC.equal(map(map(fa)(f1))(f2), map(fa)(f2 compose f1))
+  }
+  The first law says that mapping the identity function over every item in a container has no effect.
+  The second says that mapping a composition of two functions over every item in a container is the same as first
+  mapping one function, and then mapping the other.
   */
   def testFunctor() {
 
@@ -292,7 +307,7 @@ object ScalazExperiments {
       scala> :t res1
       scalaz.Functor[[α]List[Option[α]]]
       */
-      val compose1 = Functor[List] compose Functor[Option]
+      val compose1 = Functor[List] compose Functor[Option] // scalaz.Functor[[α]List[Option[α]]]
 
       /*
       map[Int, Double](fga: List[Option[Int]])(f: Int => Double): List[Option[Double]] ==
@@ -356,6 +371,29 @@ object ScalazExperiments {
       println(lifted((List(Some(1), Some(2), Some(3), None), Some(4)))) // (List(Some(0.5), Some(1.0), Some(1.5), None),Some(2.0))
 
 
+      // strengthL
+      // ---------------------
+      // compose1 = scalaz.Functor[[α]List[Option[α]]]
+      println(compose1.strengthL(111, fga)) // List(Some((111,1)), None, Some((111,3)))
+
+    }
+
+    {
+
+      import scalaz.std.function._
+
+      // mapply
+      // ---------------------
+      val transfoA: Int => Double = _ / 2.0
+      val transfoB: Int => Double = _ + 1
+      val transfoC: Int => Double = _ * 2
+      val functions = List(transfoA, transfoB, transfoC)
+
+      Functor[List].mapply(10)(functions) // List[Double] = List(5.0, 11.0, 20.0)
+
+      // void
+      // ---------------------
+      val voidF = (Functor[List] compose Functor[Option]).void(List(Some(1), None, Some(3))) // List(Some(()), None, Some(()))
     }
 
   }
