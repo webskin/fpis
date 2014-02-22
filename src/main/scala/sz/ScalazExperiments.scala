@@ -395,6 +395,26 @@ object ScalazExperiments {
       // void
       // ---------------------
       println((Functor[List] compose Functor[Option]).void(List(Some(1), None, Some(3)))) // List(Some(()), None, Some(()))
+      println((Functor[List].compose[Option]).void(List(Some(1), None, Some(3)))) // List(Some(()), None, Some(()))
+    }
+
+    {
+      // avec un implicit
+      import std.list._
+      import std.option._
+
+      import syntax.functor._
+
+      implicit val mine = Functor[List] compose Functor[Option]
+
+      /*
+      <dobblego> yeah it will always use Functor[List]
+      <dobblego> notice that Functor[List ∘ Option] is actually an inline type-alias
+      <dobblego> so you could wrap List ∘ Option or use the existing one
+      <dobblego> I don't know of a way to easily get your desired behaviour with the raw functor composition
+       */
+      println(List(Some(1), None, Some(3)).void) // => problem : List((), (), ())
+
     }
 
   }
@@ -409,12 +429,67 @@ object ScalazExperiments {
   def map[A, B](fa: F[A])(f: A => B): F[B]
 
   pour `ap` fa est call by name
+  ap equivaut à `<*>`
 
    */
   def testApply() {
 
     import syntax.apply._
+    import std.option._
+    import std.list._
 
+    /*
+    def ap[A,B](fa: => F[A])(f: => F[A => B]): F[B]
+
+    final def <*>[B](f: F[A => B]): F[B] = F.ap(self)(f)
+    F : Apply[Option]
+
+    scalaz/std/Option.scala :
+    ------------------------------
+
+    trait OptionInstances extends OptionInstances0 {
+    implicit val optionInstance = new Traverse[Option] with MonadPlus[Option] with Each[Option] with Index[Option] with Length[Option] with Cozip[Option] with Zip[Option] with Unzip[Option] with IsEmpty[Option] {
+      …
+      override def ap[A, B](fa: => Option[A])(f: => Option[A => B]) = f match {
+        case Some(f) => fa match {
+          case Some(x) => Some(f(x))
+          case None    => None
+        }
+        case None    => None
+      }
+     */
+    println(some(9) <*> some((_: Int) + 3)) // affiche Some(12)
+    println(some(9) <*> some((_: Int) + " toto ")) // affiche Some(9 toto )
+
+
+    /*
+    scalaz/Bind.scala :
+    ------------------------------
+    trait Bind[F[_]] extends Apply[F] { self =>
+      ////
+
+      /** Equivalent to `join(map(fa)(f))`. */
+      def bind[A, B](fa: F[A])(f: A => F[B]): F[B]
+
+      override def ap[A, B](fa: => F[A])(f: => F[A => B]): F[B] = bind(f)(f => map(fa)(f))
+
+      …
+    }
+
+    scalaz/std/List.scala :
+    ------------------------------
+
+    …
+    def bind[A, B](fa: List[A])(f: A => List[B]) = fa flatMap f
+    …
+
+     */
+    println(List(9, 10) <*> List((_: Int) + 3)) // List[Int] = List(12, 13)
+    println(Apply[Option].ap2(some("1"), some("2"))(some((_: String) + (_: String)))) // Some(12)
+
+    println(^(List(9, 10), List(11, 12))((a: Int, b: Int) => a.toString + "-" + b.toString)) // List(9-11, 9-12, 10-11, 10-12)
+
+    Apply[List].compose[Option].ap(List(Some(1), None, Some(3)))(List(Some((_: Int) + 3))) // List(Some(4), None, Some(6))
 
   }
 }
