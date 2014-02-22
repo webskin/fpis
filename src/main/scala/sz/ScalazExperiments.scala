@@ -1,6 +1,7 @@
 package sz
 
 import scalaz._
+import scala.Some
 
 /**
  * Created by Mickaël Gauvin on 2/20/14.
@@ -629,6 +630,48 @@ object ScalazExperiments {
 
       println(^(3.some, 5.some) {_ + _}) // Some(8)
       println(^(3.some, none: Option[Int]) {_ + _}) // None
+
+      /*
+      The new ^(f1, f2) {...} style is not without the problem though. It doesn’t seem to handle Applicatives that
+      takes two type parameters like Function1, Writer, and Validation. There’s another way called Applicative Builder,
+      which apparently was the way it worked in Scalaz 6, got deprecated in M3, but will be vindicated again
+      because of ^(f1, f2) {...}’s issues.
+
+      scalaz/syntax/ApplySyntax.scala :
+      ------------------------------
+      final def |@|[B](fb: F[B]) = new ApplicativeBuilder[F, A, B] {
+        val a: F[A] = self
+        val b: F[B] = fb
+      }
+
+      Here’s how it looks:
+
+       */
+
+      println((3.some |@| 5.some) {_ + _}) // Some(8)
+
+      println(List(9, 10) <*> List((_: Int) + 3)) // List[Int] = List(12, 13)
+      println(List(9, 10) <*> List((_: Int) + 3, (_: Int) + 100)) // List(12, 13, 109, 110)
+
+      println(^(3.some, 5.some) {_ + _}) // Some(8)
+      println((3.some |@| 5.some) {_ + _}) // Some(8)
+
+      println(^(List(9, 10), List(11, 12))((a: Int, b: Int) => a.toString + "-" + b.toString)) // List(9-11, 9-12, 10-11, 10-12)
+      println((List(9, 10) |@| List(11, 12))((a: Int, b: Int) => a.toString + "-" + b.toString)) // List(9-11, 9-12, 10-11, 10-12)
+
+
+      println((List(9, 10) |@| List(11, 12) |@| List(13, 14))((_, _, _))) // List((9,11,13), (9,11,14), (9,12,13), (9,12,14), (10,11,13), (10,11,14), (10,12,13), (10,12,14))
+
+      // List[F[A]] => F[List[A]]
+      def sequenceA[F[_]: Applicative, A](list: List[F[A]]): F[List[A]] = list match {
+        case Nil     => (Nil: List[A]).point[F]
+        case x :: xs => (x |@| sequenceA(xs)) {_ :: _}
+      }
+
+      println(sequenceA(List(1.some, 2.some))) // Some(List(1, 2))
+      println(sequenceA(List(3.some, none, 1.some))) // None
+      println(sequenceA(List(List(1, 2, 3), List(4, 5, 6)))) // List(List(1, 4), List(1, 5), List(1, 6), List(2, 4), List(2, 5), List(2, 6), List(3, 4), List(3, 5), List(3, 6))
+
     }
 
 
