@@ -416,8 +416,22 @@ object ScalazExperiments {
        */
       println(List(Some(1), None, Some(3)).void) // => problem : List((), (), ())
 
+
     }
 
+    {
+      import std.list._
+      import std.option._
+
+      import syntax.functor._
+
+      type ListOption[α] = ({type λ[α] = List[Option[α]]})#λ[α]
+
+      //scalaz.Functor[[α]List[Option[α]]]
+      implicit val mine: Functor[ListOption] = Functor[List] compose Functor[Option]
+
+      println(List(Some(1), None, Some(3)).void) // => non plus : List((), (), ())
+    }
   }
 
   /*
@@ -578,6 +592,7 @@ object ScalazExperiments {
 
       import std.option._
       import std.option.optionSyntax._
+      import std.function._
 
       /*
       ////
@@ -671,6 +686,13 @@ object ScalazExperiments {
       println(sequenceA(List(1.some, 2.some))) // Some(List(1, 2))
       println(sequenceA(List(3.some, none, 1.some))) // None
       println(sequenceA(List(List(1, 2, 3), List(4, 5, 6)))) // List(List(1, 4), List(1, 5), List(1, 6), List(2, 4), List(2, 5), List(2, 6), List(3, 4), List(3, 5), List(3, 6))
+
+
+      // intellij a du mal
+      type Function1Int[A] = ({type l[A]=Function1[Int, A]})#l[A]
+      val s = sequenceA(List((_: Int) + 3, (_: Int) + 2, (_: Int) + 1): List[Function1Int[Int]])
+
+      println(s(3)) // List(6, 5, 4)
 
     }
 
