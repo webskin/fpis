@@ -487,9 +487,153 @@ object ScalazExperiments {
     println(List(9, 10) <*> List((_: Int) + 3)) // List[Int] = List(12, 13)
     println(Apply[Option].ap2(some("1"), some("2"))(some((_: String) + (_: String)))) // Some(12)
 
+    // cf. apply2
     println(^(List(9, 10), List(11, 12))((a: Int, b: Int) => a.toString + "-" + b.toString)) // List(9-11, 9-12, 10-11, 10-12)
 
     Apply[List].compose[Option].ap(List(Some(1), None, Some(3)))(List(Some((_: Int) + 3))) // List(Some(4), None, Some(6))
+
+  }
+
+  /*
+  http://www.soi.city.ac.uk/~ross/papers/Applicative.pdf
+
+  Applicative functors — an abstract characterisation of an applicative style of effectful programming,
+  weaker than Monads and hence more widespread.
+
+  From Haskell :
+  Recall that Functor allows us to lift a “normal” function to a function on computational contexts.
+  But fmap (map in Scala) doesn’t allow us to apply a function which is itself in a context to a value in a context.
+  Applicative gives us just such a tool, (<*>).
+  It also provides a method, pure, for embedding values in a default, “effect free” context.
+
+  Laws :
+
+  - The identity law:
+  pure id <*> v = v
+
+  - Homomorphism:
+  pure f <*> pure x = pure (f x)
+  Intuitively, applying a non-effectful function to a non-effectful argument in an effectful context is the same as
+  just applying the function to the argument and then injecting the result into the context with pure.
+
+  - Interchange:
+  u <*> pure y = pure ($ y) <*> u
+  Intuitively, this says that when evaluating the application of an effectful function to a pure argument,
+  the order in which we evaluate the function and its argument doesn't matter.
+
+  - Composition:
+  u <*> (v <*> w) = pure (.) <*> u <*> v <*> w
+  This one is the trickiest law to gain intuition for. In some sense it is expressing a sort of associativity
+  property of (<*>). The reader may wish to simply convince themselves that this law is type-correct.
+
+  scalaz/Applicative.scala :
+  ------------------------------
+
+  * Applicative Functor, described in [[http://www.soi.city.ac.uk/~ross/papers/Applicative.html Applicative Programming with Effects]]
+  *
+  * Whereas a [[scalaz.Functor]] allows application of a pure function to a value in a context, an Applicative
+  * also allows application of a function in a context to a value in a context (`ap`).
+  *
+  * It follows that a pure function can be applied to arguments in a context. (See `map2`, `map3`, ... )
+  *
+  * Applicative instances come in a few flavours:
+  *  - All [[scalaz.Monad]]s are also `Applicative`
+  *  - Any [[scalaz.Monoid]] can be treated as an Applicative (see [[scalaz.Monoid]]#applicative)
+  *  - Zipping together corresponding elements of Naperian data structures (those of of a fixed, possibly infinite shape)
+  trait Applicative[F[_]] extends Apply[F] { self =>
+    ////
+    def point[A](a: => A): F[A]
+
+    // alias for point
+    def pure[A](a: => A): F[A] = point(a)
+
+    // derived functions
+    override def map[A, B](fa: F[A])(f: A => B): F[B] =
+      ap(fa)(point(f))
+
+    override def apply2[A, B, C](fa: => F[A], fb: => F[B])(f: (A, B) => C): F[C] =
+      ap2(fa, fb)(point(f))
+
+    …
+
+  scalaz/std/List.scala :
+  ------------------------------
+
+  …
+  //It also provides a method, pure, for embedding values in a default, “effect free” context.
+  //pure takes a value of any type a, and returns a context/container of type f a. The intention is that pure creates some
+  //sort of “default” container or “effect free” context. In fact, the behavior of pure is quite constrained by the laws
+  //it should satisfy in conjunction with (<*>). Usually, for a given implementation of (<*>) there is only one possible
+  //implementation of pure.
+  def point[A](a: => A) = scala.List(a)
+  …
+
+   */
+  def testApplicative() {
+    import syntax.applicative._
+
+    {
+      import std.list._
+
+      import std.option._
+      import std.option.optionSyntax._
+
+      /*
+      ////
+      implicit def ApplicativeIdV[A](v: => A) = new ApplicativeIdV[A] {
+        lazy val self = v
+      }
+
+      trait ApplicativeIdV[A] extends Ops[A] {
+        def point[F[_] : Applicative]: F[A] = Applicative[F].point(self)
+        def pure[F[_] : Applicative]: F[A] = Applicative[F].point(self)
+        def η[F[_] : Applicative]: F[A] = Applicative[F].point(self)
+      }  ////
+       */
+      println(1.point[List]) // List(1)
+
+      /*
+      cool about the fact that constructor is abstracted out.
+
+      scalaz/syntax/std/OptionIdOps.scala :
+      -------------------------------------
+
+      trait OptionIdOps[A] extends Ops[A] {
+        def some: Option[A] = Some(self)
+      }
+
+      trait ToOptionIdOps {
+        implicit def ToOptionIdOps[A](a: A) = new OptionIdOps[A] { def self = a }
+      }
+
+
+       */
+      println(1.point[List] map {_ + 2}) // List(3)
+
+      println(9.some <*> {(_: Int) + 3}.some) // Some(12)
+
+      println(1.some <* 2.some) // Some(1)
+
+      println(none <* 2.some)  // None
+
+      println(1.some *> 2.some) // Some(2)
+
+      println(none *> 2.some) // None
+
+      /*
+      3.some <*> { 9.some <*> {(_: Int) + (_: Int)}.curried.some } ==
+      3.some <*> {(_: Int) + 9}.some
+       */
+      println(3.some <*> { 9.some <*> {(_: Int) + (_: Int)}.curried.some }) // Some(12)
+      println(3.some <*> {(_: Int) + 9}.some) // Some(12)
+
+      println(^(3.some, 5.some) {_ + _}) // Some(8)
+      println(^(3.some, none: Option[Int]) {_ + _}) // None
+    }
+
+
+
+
 
   }
 }
