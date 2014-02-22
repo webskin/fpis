@@ -249,7 +249,7 @@ object ScalazExperiments {
       // ----------------
 
       // import functor instances
-      import scalaz.std.option._
+      import std.option._
 
       /*
       scalaz/std/List.scala :
@@ -265,7 +265,7 @@ object ScalazExperiments {
       }
       …
       */
-      import scalaz.std.list._
+      import std.list._
 
 
       /*
@@ -333,7 +333,7 @@ object ScalazExperiments {
       println(listInstance.map(fga)(ga => optionInstance.apply(ga)(transfo))) // affiche List(Some(0.5), None, Some(1.5))
 
       {
-        import scalaz.Id.Id
+        import Id.Id
         println(listInstance.traverseImpl[Id,Option[Int],Option[Double]](fga)(ga => ga map transfo)(Id.id)) // affiche List(Some(0.5), None, Some(1.5))
       }
 
@@ -380,7 +380,8 @@ object ScalazExperiments {
 
     {
 
-      import scalaz.std.function._
+      import std.list._
+      import std.option._
 
       // mapply
       // ---------------------
@@ -389,13 +390,31 @@ object ScalazExperiments {
       val transfoC: Int => Double = _ * 2
       val functions = List(transfoA, transfoB, transfoC)
 
-      Functor[List].mapply(10)(functions) // List[Double] = List(5.0, 11.0, 20.0)
+      println(Functor[List].mapply(10)(functions)) // List[Double] = List(5.0, 11.0, 20.0)
 
       // void
       // ---------------------
-      val voidF = (Functor[List] compose Functor[Option]).void(List(Some(1), None, Some(3))) // List(Some(()), None, Some(()))
+      println((Functor[List] compose Functor[Option]).void(List(Some(1), None, Some(3)))) // List(Some(()), None, Some(()))
     }
 
   }
 
+  /*
+  [[scalaz.Applicative]] without `point`.
+
+  nouvelle méthode :
+  def ap[A,B](fa: => F[A])(f: => F[A => B]): F[B]
+
+  comparée avec :
+  def map[A, B](fa: F[A])(f: A => B): F[B]
+
+  pour `ap` fa est call by name
+
+   */
+  def testApply() {
+
+    import syntax.apply._
+
+
+  }
 }
