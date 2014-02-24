@@ -206,6 +206,26 @@ object ScalazExperiments {
   The first law says that mapping the identity function over every item in a container has no effect.
   The second says that mapping a composition of two functions over every item in a container is the same as first
   mapping one function, and then mapping the other.
+
+  scala> kind[Int]
+  res0: String = Int's kind is *.
+  This is a proper type. Int
+
+  scala> kind[Option.type]
+  res1: String = Option's kind is * -> *.
+  This is a type constructor: a 1st-order-kinded type. Option[A]
+
+  scala> kind[Either.type]
+  res2: String = Either's kind is * -> * -> *.
+  This is a type constructor: a 1st-order-kinded type. Either[L, R]
+
+  scala> kind[Equal.type]
+  res3: String = Equal's kind is * -> *.
+  This is a type constructor: a 1st-order-kinded type. Equal[A]
+
+  scala> kind[Functor.type]
+  res4: String = Functor's kind is (* -> *) -> *.
+  This is a type constructor that takes type constructor(s): a higher-kinded type. Functor[F[_]]
   */
   def testFunctor() {
 
@@ -695,10 +715,9 @@ object ScalazExperiments {
       println(s(3)) // List(6, 5, 4)
 
     }
+  }
 
-
-
-
+  def testMonad() {
 
   }
 }
