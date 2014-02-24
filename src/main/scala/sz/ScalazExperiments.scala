@@ -132,6 +132,8 @@ object ScalazExperiments {
     implicit def ToShowOps[F](v: F)(implicit F0: Show[F]) =
         new ShowOps[F] { def self = v; implicit def F: Show[F] = F0 }
 
+    import std.anyVal._ // default shows
+
     */
     import syntax.show._
     {
@@ -170,6 +172,12 @@ object ScalazExperiments {
 
       println(4.shows) // affiche 4 tata
 
+    }
+
+    {
+      import std.anyVal._
+
+      println(4.shows) // affiche 4
     }
 
 
@@ -901,5 +909,108 @@ object ScalazExperiments {
       p4 <- p3.landRight(-2)
       p5 <- p4.landRight(-2)
     } yield p5)
+
+    // None
+    println(for {
+      start <- Monad[Option].point(Pole(0, 0))
+      first <- start.landLeft(2)
+      _ <- (none: Option[Pole])
+      second <- first.landRight(2)
+      third <- second.landLeft(1)
+    } yield third)
+
+    // Instead of making functions that ignore their input and just return a predetermined monadic value,
+    // we can use the >> function.
+    /*
+    scala> (none: Option[Int]) >> 3.some // restart with none
+    res25: Option[Int] = None
+
+    scala> 3.some >> 4.some // ignore 3
+    res26: Option[Int] = Some(4)
+
+    scala> 3.some >> (none: Option[Int]) // ignore 3
+    res27: Option[Int] = None
+     */
+    // plantage de : cf. http://eed3si9n.com/learning-scalaz/Walk+the+line.html
+    // Monad[Option].point(Pole(0, 0)) >>= {_.landLeft(1)} >> (none: Option[Pole]) >>= {_.landRight(1)}
+    // car the operator >> precedence.
+    println(Monad[Option].point(Pole(0, 0)).>>=({_.landLeft(1)}).>>(none: Option[Pole]).>>=({_.landRight(1)}))
+    // Or recognize the precedence issue and place parens around just the right place:
+    println((Monad[Option].point(Pole(0, 0)) >>= {_.landLeft(1)}) >> (none: Option[Pole]) >>= {_.landRight(1)})
+
+
   }
+
+  /*
+  Whereas the Maybe monad is for values with an added context of failure, and the list monad is for nondeterministic
+  values, Writer monad is for values that have another value attached that acts as a sort of log value.
+  cf. http://eed3si9n.com/learning-scalaz/Writer.html
+
+  sealed trait WriterT[F[+_], +W, +A] { self =>
+    val run: F[(W, A)]
+
+    def written(implicit F: Functor[F]): F[W] =
+      F.map(run)(_._1)
+    def value(implicit F: Functor[F]): F[A] =
+      F.map(run)(_._2)
+  }
+
+  trait WriterTFunctions {
+    def writerT[F[+_], W, A](v: F[(W, A)]): WriterT[F, W, A] = new WriterT[F, W, A] {
+      val run = v
+    }
+
+    import StoreT._
+
+    def writer[W, A](v: (W, A)): Writer[W, A] =
+      writerT[Id, W, A](v)
+
+    def tell[W](w: W): Writer[W, Unit] = writer(w -> ())
+
+    def put[F[+_], W, A](value: F[A])(w: W)(implicit F: Functor[F]): WriterT[F, W, A] =
+      WriterT(F.map(value)(a => (w, a)))
+
+    /** Puts the written value that is produced by applying the given function into a writer transformer and associates with `value` */
+    def putWith[F[+_], W, A](value: F[A])(w: A => W)(implicit F: Functor[F]): WriterT[F, W, A] =
+      WriterT(F.map(value)(a => (w(a), a)))
+
+  }
+
+  trait WriterOps[A] extends Ops[A] {
+    def set[W](w: W): Writer[W, A] = WriterT.writer(w -> self)
+
+    def tell: Writer[A, Unit] = WriterT.tell(self)
+  }
+
+  scalaz/package.scala :
+  ------------------------------
+  type Writer[+W, +A] = WriterT[Id, W, A]
+  type Unwriter[+W, +A] = UnwriterT[Id, W, A]
+
+   */
+  def testWriterMonad() {
+    import syntax.writer._
+    import syntax.show._
+    import std.vector._
+    import std.anyVal._ // default shows
+
+    println(3.set("Smallish gang.")) //scalaz.WriterTFunctions$$anon$23@53e082bb
+    println(3.set("Smallish gang.").run)// (Smallish gang.,3)
+    println("something".tell) // scalaz.WriterTFunctions$$anon$23@38a6ee02
+    println("something".tell.run) // (String, Unit) = (something,())
+
+
+    def gcd(a: Int, b: Int): Writer[Vector[String], Int] =
+      if (b == 0) for {
+        _ <- Vector("Finished with " + a.shows).tell
+      } yield a
+      else for {
+        result <- gcd(b, a % b)
+        _ <- Vector(a.shows + " mod " + b.shows + " = " + (a % b).shows).tell
+      } yield result
+
+    println(gcd(8, 3).run) // (Vector(Finished with 1, 2 mod 1 = 0, 3 mod 2 = 1, 8 mod 3 = 2),1)
+  }
+
+
 }
