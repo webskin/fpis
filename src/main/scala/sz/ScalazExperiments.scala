@@ -1005,12 +1005,70 @@ object ScalazExperiments {
         _ <- Vector("Finished with " + a.shows).tell
       } yield a
       else for {
-        result <- gcd(b, a % b)
         _ <- Vector(a.shows + " mod " + b.shows + " = " + (a % b).shows).tell
+        result <- gcd(b, a % b)
       } yield result
 
-    println(gcd(8, 3).run) // (Vector(Finished with 1, 2 mod 1 = 0, 3 mod 2 = 1, 8 mod 3 = 2),1)
+    println(gcd(8, 3).run) // (Vector(8 mod 3 = 2, 3 mod 2 = 1, 2 mod 1 = 0, Finished with 1),1)
+
+
+    def testA: Writer[Vector[String], Int] = for {
+      _ <- Vector("a").tell
+      _ <- Vector("b").tell
+      _ <- Vector("c").tell
+    } yield 1000
+
+    println(testA.run) // (Vector(a, b, c),1000)
+
+    def invokeService(a: Int): Writer[Vector[String], Int] = for {
+      _ <- Vector("Début invokeService").tell
+    } yield 1000 + a
+
+    def testB: Writer[Vector[String], Int] = for {
+      _ <- Vector("Début testB").tell
+      _ <- Vector("b").tell
+      b <- invokeService(4)
+      _ <- Vector("c").tell
+      _ <- Vector("Fin").tell
+    } yield b
+
+    println(testB.run) // (Vector(a, b, c),1000)
+
   }
 
+  /*
+  import scalaz._, Scalaz._
+
+  object RWSExample extends App {
+    case class Config(port: Int)
+
+    def log[R, S](msg: String): ReaderWriterState[R, List[String], S, Unit] =
+      ReaderWriterStateT {
+        case (r, s) => (msg.format(r, s) :: Nil, (), s).point[Identity]
+      }
+
+    def invokeService: ReaderWriterState[Config, List[String], Int, Int] =
+      ReaderWriterStateT {
+        case (cfg, invocationCount) => (
+          List("Invoking service with port " + cfg.port),
+          scala.util.Random.nextInt(100),
+          invocationCount + 1
+        ).point[Identity]
+      }
+
+    val program: RWS[Config, List[String], Int, Int] = for {
+      _   <- log("Start - r: %s, s: %s")
+      res <- invokeService
+      _   <- log("Between - r: %s, s: %s")
+      _   <- invokeService
+      _   <- log("Done - r: %s, s: %s")
+    } yield res
+
+    val Need(logMessages, result, invocationCount) = program run (Config(443), 0)
+    println("Result: " + result)
+    println("Service invocations: " + invocationCount)
+    println("Log: %n%s".format(logMessages.mkString("\t", "%n\t".format(), "")))
+  }
+   */
 
 }
