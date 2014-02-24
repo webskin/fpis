@@ -717,7 +717,189 @@ object ScalazExperiments {
     }
   }
 
+  /*
+  LYAHFGG:
+
+  It seems that both * together with 1 and ++ along with [] share some common properties: - The function takes two
+  parameters. - The parameters and the returned value have the same type. - There exists such a value that doesn’t
+  change other values when used with the binary function.
+
+  It doesn’t matter if we do (3 * 4) * 5 or 3 * (4 * 5). Either way, the result is 60. The same goes for ++. …
+  We call this property associativity. * is associative, and so is ++, but -, for example, is not.
+
+  scala> (3 * 2) * (8 * 5) assert_=== 3 * (2 * (8 * 5))
+
+  scala> List("la") ++ (List("di") ++ List("da")) assert_=== (List("la") ++ List("di")) ++ List("da")
+
+  A monoid is when you have an associative binary function and a value which acts as an identity with respect to that
+  function.
+
+  // An associative binary operation, circumscribed by type and the
+  // semigroup laws.  Unlike [[scalaz.Monoid]], there is not necessarily
+  // a zero.
+  trait Semigroup[A]  { self =>
+    def append(a1: A, a2: => A): A
+    ...
+  }
+
+  // Provides an identity element (`zero`) to the binary `append`
+  // operation in [[scalaz.Semigroup]], subject to the monoid laws.
+  //
+  // Example instances:
+  //  - `Monoid[Int]`: `zero` and `append` are `0` and `Int#+` respectively
+  //  - `Monoid[List[A]]`: `zero` and `append` are `Nil` and `List#++` respectively
+  // LYAHFGG:
+  //
+  // mempty represents the identity value for a particular monoid.
+  //
+  // Scalaz calls this zero instead.
+  trait Monoid[A] extends Semigroup[A] { self =>
+    ////
+    // The identity element for `append`.
+    def zero: A
+
+    ...
+  }
+
+  // We have mappend, which, as you’ve probably guessed, is the binary function. It takes two values of the
+  // same type and returns a
+  // value of that type as well.
+  trait SemigroupOps[A] extends Ops[A] {
+    final def |+|(other: => A): A = A.append(self, other)
+    final def mappend(other: => A): A = A.append(self, other)
+    final def ⊹(other: => A): A = A.append(self, other)
+  }
+
+  cf. http://eed3si9n.com/learning-scalaz/Monoid.html
+
+  Semigroup and Monoid as a way of abstracting binary operations over various types.
+
+   */
+  def testMonoid() {
+
+    {
+      import syntax.semigroup._
+      import syntax.order._
+      import std.list._
+      import std.string._
+      import std.option._
+      import std.option.optionSyntax._
+      println(List(1, 2, 3) |+| List(4, 5, 6)) // List(1, 2, 3, 4, 5, 6)
+      println("one" |+| "two") // onetwo
+
+      println(Monoid[List[Int]].zero) // List()
+      println(Monoid[String].zero) // ""
+
+      def lengthCompare(lhs: String, rhs: String): Ordering =
+        (lhs.length ?|? rhs.length) |+| (lhs ?|? rhs)
+
+      println(lengthCompare("zen", "ants")) // LT
+      println(lengthCompare("zen", "ant")) // GT
+
+
+      // cf. http://eed3si9n.com/learning-scalaz/Option+as+Monoid.html
+      println((none: Option[String]) |+| "andy".some) // Some(andy)
+      println("toto".some |+| "andy".some) // Some(totoandy)
+    }
+  }
+
+  /*
+  From Haskell :
+  Monads are a natural extension applicative functors, and they provide a solution to the following problem:
+  If we have a value with context, m a, how do we apply it to a function that takes a normal a
+  and returns a value with a context.
+
+  flatMap
+
+  trait Monad[F[_]] extends Applicative[F] with Bind[F] { self =>
+    ////
+  }
+
+  trait Bind[F[_]] extends Apply[F] { self =>
+    //  Equivalent to `join(map(fa)(f))`.   join <=> flatten
+    def bind[A, B](fa: F[A])(f: A => F[B]): F[B]
+  }
+
+  // Wraps a value `self` and provides methods related to `Bind`
+  trait BindOps[F[_],A] extends Ops[F[A]] {
+    implicit def F: Bind[F]
+    ////
+    import Liskov.<~<
+
+    def flatMap[B](f: A => F[B]) = F.bind(self)(f)
+    def >>=[B](f: A => F[B]) = F.bind(self)(f)
+    def ∗[B](f: A => F[B]) = F.bind(self)(f)
+    def join[B](implicit ev: A <~< F[B]): F[B] = F.bind(self)(ev(_))
+    def μ[B](implicit ev: A <~< F[B]): F[B] = F.bind(self)(ev(_))
+    def >>[B](b: F[B]): F[B] = F.bind(self)(_ => b)
+    def ifM[B](ifTrue: => F[B], ifFalse: => F[B])(implicit ev: A <~< Boolean): F[B] = {
+      val value: F[Boolean] = Liskov.co[F, A, Boolean](ev)(self)
+      F.ifM(value, ifTrue, ifFalse)
+    }
+    ////
+  }
+   */
   def testMonad() {
 
+    import syntax.monad._
+    import std.list._
+    import std.string._
+    import std.option._
+    import std.option.optionSyntax._
+
+
+    println(Monad[Option].point("WHAT")) // Some(WHAT)
+    println(9.some flatMap { x => Monad[Option].point(x * 10) }) // Some(90)
+
+    /*
+    Let’s say that [Pierre] keeps his balance if the number of birds on the left side of the pole and on the right side
+    of the pole is within three. So if there’s one bird on the right side and four birds on the left side, he’s okay.
+    But if a fifth bird lands on the left side, then he loses his balance and takes a dive.
+    We may also devise a function that ignores the current number of birds on the balancing pole and just
+    makes Pierre slip and fall. We can call it banana.
+     */
+    type Birds = Int
+    case class Pole(left: Birds, right: Birds) {
+      def landLeft(n: Birds): Option[Pole] = {
+        println("landLeft :" + n)
+        if (math.abs((left + n) - right) < 4) copy(left = left + n).some
+        else none
+      }
+      def landRight(n: Birds): Option[Pole] = {
+        println("landRight :" + n)
+        if (math.abs(left - (right + n)) < 4) copy(right = right + n).some
+        else none
+      }
+      def banana: Option[Pole] = {
+        println("banana :")
+        none
+      }
+    }
+
+    // >>=   is flatMap
+    // prints
+    /*
+    landLeft :1
+    landRight :4
+    landLeft :-1
+    None
+     */
+    println(Monad[Option].point(Pole(0, 0)) >>= {_.landLeft(1)} >>= {_.landRight(4)} >>= {_.landLeft(-1)} /* fails fast */ >>= {_.landRight(-2)} >>= {_.landRight(-2)})
+
+    // Option is already a monad
+    // prints
+    /*
+    landLeft :1
+    landRight :4
+    landLeft :-1
+    None
+     */
+    println(for {
+      p1 <- Pole(0, 0).landLeft(1)
+      p2 <- p1.landRight(4)
+      p3 <- p2.landLeft(-1) // fails here
+      p4 <- p3.landRight(-2)
+      p5 <- p4.landRight(-2)
+    } yield p5)
   }
 }
